@@ -10,23 +10,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Init(){
+func Init() {
 	err := godotenv.Load("../.env")
 	if err != nil {
 		fmt.Print(err)
 	}
+	config.OpenDB()
 }
 
-func TestCreate(t *testing.T){
+func TestCreate(t *testing.T) {
 	Init()
 	book := model.Book{
-		ISBN:    "978-3-16-148410-0\n",
-		Penulis: "John Doe\n",
+		ISBN:    "978-3-16-148410-0",
+		Penulis: "John Doe",
 		Tahun:   2022,
-		Judul:   "Dummy Book\n",
-		Gambar:  "dummy.jpg\n",
+		Judul:   "Dummy Book",
+		Gambar:  "dummy.jpg",
 		Stok:    10,
 	}
-	err := book.CreateBook(config.Mysql.DB)
+	err := book.CreateBook(config.Mysql.DB).Error()
 	assert.Nil(t, err)
 }
