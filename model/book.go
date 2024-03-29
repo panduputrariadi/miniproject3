@@ -1,16 +1,12 @@
 package model
 
 import (
-	"bufio"
 	"encoding/csv"
 	"fmt"
+	"gorm.io/gorm"
 	"log"
 	"os"
 	"strconv"
-	"strings"
-
-	"github.com/jung-kurt/gofpdf"
-	"gorm.io/gorm"
 )
 
 type Book struct {
@@ -24,59 +20,6 @@ type Book struct {
 }
 
 func (cr *Book) CreateBook(db *gorm.DB) error {
-	inputUser := bufio.NewReader(os.Stdin)
-
-	fmt.Println("Tambah Daftar Buku")
-
-	fmt.Print("Silahkan tambah ISBN buku: ")
-	ISBN, err := inputUser.ReadString('\n')
-	if err != nil {
-		fmt.Println("Terjadi error: ", err)
-		return err
-	}
-	cr.ISBN = strings.TrimSpace(ISBN)
-
-	fmt.Print("Silahkan tambah judul buku: ")
-	judulBuku, err := inputUser.ReadString('\n')
-	if err != nil {
-		fmt.Println("Terjadi error: ", err)
-		return err
-	}
-	cr.Judul = strings.Replace(judulBuku, "\n", "", 1)
-
-	fmt.Print("Silahkan tambah penulis buku: ")
-	penulis, err := inputUser.ReadString('\n')
-	if err != nil {
-		fmt.Println("Terjadi error: ", err)
-		return err
-	}
-	cr.Penulis = strings.Replace(penulis, "\n", "", 1)
-
-	var tahun uint
-	fmt.Print("Silahkan Masukkan tahun terbit buku: ")
-	_, err = fmt.Scanln(&tahun)
-	if err != nil {
-		fmt.Println("Terjadi error: ", err)
-		return err
-	}
-	cr.Tahun = tahun
-
-	fmt.Print("Silahkan Masukan nama file gambar buku: ")
-	gambar, err := inputUser.ReadString('\n')
-	if err != nil {
-		fmt.Println("Terjadi error: ", err)
-		return err
-	}
-	cr.Gambar = strings.Replace(gambar, "\n", "", 1)
-
-	var stok uint
-	fmt.Print("Silahkan Masukan jumlah stok buku: ")
-	_, err = fmt.Scanln(&stok)
-	if err != nil {
-		fmt.Println("Terjadi error: ", err)
-		return err
-	}
-	cr.Stok = stok
 
 	// Create a new record in the database
 	result := db.Model(Book{}).Create(&cr).Error
@@ -89,120 +32,41 @@ func (cr *Book) CreateBook(db *gorm.DB) error {
 	return nil
 }
 
-func ReadBooks(db *gorm.DB) ([]Book, error) {
-	var books []Book
-	result := db.Find(&books)
-	if result.Error != nil {
-		return nil, result.Error
-	}
+func (cr *Book) ReadBooks(db *gorm.DB) ([]Book, error) {
+	res := []Book{}
 
-	return books, nil
-}
-
-func DisplayBooks(db *gorm.DB) {
-	books, err := ReadBooks(db)
+	err := db.Model(Book{}).Find(&res).Error
 	if err != nil {
-		log.Printf("Gagal membaca daftar buku: %v", err)
-	} else {
-		fmt.Println("Daftar Buku:")
-		for _, book := range books {
-			fmt.Printf("Judul: %s, Penulis: %s, Tahun: %d, Stok: %d, id: %d, \n", book.Judul, book.Penulis, book.Tahun, book.Stok, book.ID)
-		}
+		return []Book{}, err
 	}
+
+	return res, nil
 }
 
 func (cr *Book) UpdateBook(db *gorm.DB) error {
-	inputUser := bufio.NewReader(os.Stdin)
-	DisplayBooks(db)
-
-	fmt.Println("Update Data Buku")
-	fmt.Print("Silahkan masukkan ID buku yang ingin diupdate: ")
-	var id uint
-	_, err := fmt.Scanln(&id)
+	err := db.Model(Book{}).
+		Select("isbn", "penulis", "tahun", "judul", "gambar", "stok").
+		Where("id = ?", cr.Model.ID).
+		Updates(map[string]interface{}{
+			"isbn":    cr.ISBN,
+			"penulis": cr.Penulis,
+			"tahun":   cr.Tahun,
+			"judul":   cr.Judul,
+			"gambar":  cr.Gambar,
+			"stok":    cr.Stok,
+		}).Error
 	if err != nil {
-		fmt.Println("Terjadi error: ", err)
 		return err
 	}
 
-	fmt.Print("Silahkan tambah ISBN buku: ")
-	ISBN, err := inputUser.ReadString('\n')
-	if err != nil {
-		fmt.Print("Terjadi error: ", err)
-		return err
-	}
-	cr.ISBN = strings.TrimSpace(ISBN)
-
-	fmt.Print("Silahkan tambah judul buku: ")
-	judulBuku, err := inputUser.ReadString('\n')
-	if err != nil {
-		fmt.Print("Terjadi error: ", err)
-		return err
-	}
-	cr.Judul = strings.Replace(judulBuku, "\n", "", 1)
-
-	fmt.Print("Silahkan tambah penulis buku: ")
-	penulis, err := inputUser.ReadString('\n')
-	if err != nil {
-		fmt.Print("Terjadi error: ", err)
-		return err
-	}
-	cr.Penulis = strings.Replace(penulis, "\n", "", 1)
-
-	var tahun uint
-	fmt.Print("Silahkan Masukkan tahun terbit buku: ")
-	_, err = fmt.Scanln(&tahun)
-	if err != nil {
-		fmt.Println("Terjadi error: ", err)
-		return err
-	}
-	cr.Tahun = tahun
-
-	fmt.Print("Silahkan Masukan nama file gambar buku: ")
-	gambar, err := inputUser.ReadString('\n')
-	if err != nil {
-		fmt.Print("Terjadi error: ", err)
-		return err
-	}
-	cr.Gambar = strings.Replace(gambar, "\n", "", 1)
-
-	var stok uint
-	fmt.Print("Silahkan Masukan jumlah stok buku: ")
-	_, err = fmt.Scanln(&stok)
-	if err != nil {
-		fmt.Println("Terjadi error: ", err)
-		return err
-	}
-	cr.Stok = stok
-
-	result := db.Model(Book{}).Where("id = ?", id).Updates(&cr)
-	if result.Error != nil {
-		fmt.Println("Gagal mengupdate buku: ", result.Error)
-		return result.Error
-	}
-
-	fmt.Println("Buku berhasil diupdate!")
 	return nil
 }
 
 func (cr *Book) DeleteBook(db *gorm.DB) error {
-	DisplayBooks(db)
-
-	fmt.Println("Delete Data Buku")
-	fmt.Print("Silahkan masukkan ID buku yang ingin dihapus: ")
-	var id uint
-	_, err := fmt.Scanln(&id)
+	err := db.Model(Book{}).Where("id = ?", cr.Model.ID).Delete(&cr).Error
 	if err != nil {
-		fmt.Println("Terjadi error: ", err)
 		return err
 	}
-
-	err = db.Where("id = ?", id).Delete(&Book{}).Error
-	if err != nil {
-		fmt.Println("Gagal menghapus buku: ", err)
-		return err
-	}
-
-	fmt.Println("Buku berhasil dihapus!")
 
 	return nil
 }
@@ -259,50 +123,5 @@ func ImportFromCSV(db *gorm.DB) error {
 		fmt.Println("Berhasil mengimpor dari CSV!")
 	}
 
-	return nil
-}
-
-func GeneratePDF(db *gorm.DB) error {
-	books, err := ReadBooks(db)
-	if err != nil {
-		return err
-	}
-
-	pdf := gofpdf.New("P", "mm", "A4", "")
-	pdf.AddPage()
-
-	pdf.SetFont("Arial", "B", 16)
-
-	pdf.Cell(40, 10, "Daftar Buku")
-	pdf.SetFont("Arial", "B", 12)
-
-	pdf.Ln(20)
-	pdf.Cell(40, 10, "ID")
-	pdf.Cell(40, 10, "ISBN")
-	pdf.Cell(40, 10, "Penulis")
-	pdf.Cell(40, 10, "Tahun")
-	pdf.Cell(40, 10, "Judul")
-	pdf.Cell(40, 10, "Gambar")
-	pdf.Cell(40, 10, "Stok")
-
-	pdf.SetFont("Arial", "", 10)
-
-	for _, book := range books {
-		pdf.Ln(10)
-		pdf.Cell(40, 10, strconv.Itoa(int(book.ID)))
-		pdf.Cell(40, 10, book.ISBN)
-		pdf.Cell(40, 10, book.Penulis)
-		pdf.Cell(40, 10, strconv.Itoa(int(book.Tahun)))
-		pdf.Cell(40, 10, book.Judul)
-		pdf.Cell(40, 10, book.Gambar)
-		pdf.Cell(40, 10, strconv.Itoa(int(book.Stok)))
-	}
-
-	err = pdf.OutputFileAndClose("daftar_buku.pdf")
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("PDF berhasil dibuat: daftar_buku.pdf")
 	return nil
 }
